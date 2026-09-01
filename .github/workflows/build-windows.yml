@@ -15,20 +15,14 @@ jobs:
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
-      - name: Install build tools
+      - name: Install tools
         shell: pwsh
         run: |
           choco install ninja nsis -y
           Add-Content $env:GITHUB_PATH 'C:\Program Files (x86)\NSIS'
-      - name: Extract and normalize source
+      - name: Extract source
         shell: pwsh
-        run: |
-          Expand-Archive -Path 'RB_VideoFire_2.0.0_Alpha_Native_Avid_Editorial_Core_Cumulative_OneClick.zip' -DestinationPath source
-          $root = 'source/RB_VideoFire_2.0.0_Alpha_Native'
-          Get-ChildItem $root -Include *.cmd,*.bat -Recurse | ForEach-Object {
-            $lines = Get-Content $_.FullName
-            [IO.File]::WriteAllLines($_.FullName, $lines, [Text.Encoding]::ASCII)
-          }
+        run: Expand-Archive -Path 'RB_VideoFire_2.0.0_Alpha_Native_Avid_Editorial_Core_Cumulative_OneClick.zip' -DestinationPath source
       - name: Acquire official Olive dependencies
         shell: pwsh
         run: |
@@ -38,29 +32,52 @@ jobs:
           tar -xzf olive-deps.tar.gz
           "OLIVE_DEPS_ROOT=$((Get-Location).Path)\install" | Out-File -FilePath $env:GITHUB_ENV -Append
           "$((Get-Location).Path)\install\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
-      - name: Compile test audit and package
-        shell: cmd
-        working-directory: source/RB_VideoFire_2.0.0_Alpha_Native
-        run: COMPILAR_RB_VIDEOFIRE.cmd
+      - name: Configure build
+        shell: pwsh
+        run: |
+          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
+          cmake -S $root -B "$root/build-native" -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DCMAKE_PREFIX_PATH="$env:OLIVE_DEPS_ROOT"
+      - name: Compile
+        shell: pwsh
+        run: cmake --build source/RB_VideoFire_2.0.0_Alpha_Native/build-native --config Release
+      - name: Test
+        shell: pwsh
+        run: ctest --test-dir source/RB_VideoFire_2.0.0_Alpha_Native/build-native -C Release --output-on-failure
+      - name: Deploy and package
+        shell: pwsh
+        run: |
+          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
+          $build = Join-Path $root 'build-native'
+          $dist = Join-Path $root 'dist'
+          $portable = Join-Path $dist 'portable'
+          $symbols = Join-Path $dist 'symbols'
+          New-Item -ItemType Directory -Force $portable,$symbols | Out-Null
+          $exe = Get-ChildItem $build -Filter RBVideoFire.exe -Recurse | Select-Object -First 1
+          if (-not $exe) { throw 'RBVideoFire.exe not produced' }
+          Copy-Item $exe.FullName $portable
+          Get-ChildItem $build -Filter *.pdb -Recurse | Copy-Item -Destination $symbols
+          windeployqt --release --no-translations --compiler-runtime (Join-Path $portable 'RBVideoFire.exe')
+          Copy-Item "$env:OLIVE_DEPS_ROOT/bin/*.dll" $portable -Force
+          Get-ChildItem $portable -Filter *.pdb -Recurse | Remove-Item -Force
+          Copy-Item "$root/LICENSE" "$portable/LICENSE.txt"
+          Copy-Item "$root/CHANGELOG_RB_VIDEOFIRE.md" $portable
+          powershell -NoProfile -ExecutionPolicy Bypass -File "$root/tools/audit-package.ps1" -Root $root -Portable $portable
+          Compress-Archive -Path "$portable/*" -DestinationPath "$dist/RB_VideoFire_2.0.0_Alpha_Native_Portable.zip" -Force
+          if (-not (Get-ChildItem $symbols -Filter *.pdb)) { Set-Content "$symbols/README.txt" 'No PDB emitted' }
+          Compress-Archive -Path "$symbols/*" -DestinationPath "$dist/RB_VideoFire_2.0.0_Alpha_Native_Symbols.zip" -Force
+          makensis /DX64 "/DSOURCE_ROOT=$root" "$root/packaging/rb-videofire/RBVideoFire.nsi"
+          $installer = Join-Path $dist 'RB VideoFire Setup 2.0.0 Alpha Native.exe'
+          powershell -NoProfile -ExecutionPolicy Bypass -File "$root/tools/audit-package.ps1" -Root $root -Portable $portable -Installer $installer
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
           name: RB-VideoFire-2.0.0-Alpha-Native-Installer
           path: source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB VideoFire Setup 2.0.0 Alpha Native.exe
           if-no-files-found: error
-      - name: Upload portable
+      - name: Upload portable and symbols
         uses: actions/upload-artifact@v4
         with:
-          name: RB-VideoFire-2.0.0-Alpha-Native-Portable
-          path: source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.0.0_Alpha_Native_Portable.zip
-      - name: Upload symbols
-        uses: actions/upload-artifact@v4
-        with:
-          name: RB-VideoFire-2.0.0-Alpha-Native-Symbols
-          path: source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.0.0_Alpha_Native_Symbols.zip
-      - name: Upload build log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: RB-VideoFire-2.0.0-Build-Log
-          path: source/RB_VideoFire_2.0.0_Alpha_Native/log-compilacao.txt
+          name: RB-VideoFire-2.0.0-Alpha-Native-Packages
+          path: |
+            source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.0.0_Alpha_Native_Portable.zip
+            source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.0.0_Alpha_Native_Symbols.zip
