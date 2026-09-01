@@ -1,0 +1,61 @@
+name: Build RB VideoFire 2.0.0 Native
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-windows:
+    runs-on: windows-2022
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: 3.27.x
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Install build tools
+        shell: pwsh
+        run: |
+          choco install ninja nsis -y
+          Add-Content $env:GITHUB_PATH 'C:\Program Files (x86)\NSIS'
+      - name: Extract RB VideoFire source
+        shell: pwsh
+        run: |
+          Expand-Archive -Path 'RB_VideoFire_2.0.0_Alpha_Native_Avid_Editorial_Core_Cumulative_OneClick.zip' -DestinationPath source
+      - name: Acquire official Olive dependencies
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path deps | Out-Null
+          Set-Location deps
+          curl.exe -fL 'https://github.com/olive-editor/dependencies/releases/download/continuous/olive-dep-win32-Release.tar.gz' -o olive-deps.tar.gz
+          tar -xzf olive-deps.tar.gz
+          "OLIVE_DEPS_ROOT=$((Get-Location).Path)\install" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "$((Get-Location).Path)\install\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+      - name: Compile test audit and package
+        shell: cmd
+        working-directory: source/RB_VideoFire_2.0.0_Alpha_Native
+        run: COMPILAR_RB_VIDEOFIRE.cmd
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: RB-VideoFire-2.0.0-Alpha-Native-Installer
+          path: source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB VideoFire Setup 2.0.0 Alpha Native.exe
+          if-no-files-found: error
+      - name: Upload portable
+        uses: actions/upload-artifact@v4
+        with:
+          name: RB-VideoFire-2.0.0-Alpha-Native-Portable
+          path: source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.0.0_Alpha_Native_Portable.zip
+      - name: Upload symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: RB-VideoFire-2.0.0-Alpha-Native-Symbols
+          path: source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.0.0_Alpha_Native_Symbols.zip
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RB-VideoFire-2.0.0-Build-Log
+          path: source/RB_VideoFire_2.0.0_Alpha_Native/log-compilacao.txt
