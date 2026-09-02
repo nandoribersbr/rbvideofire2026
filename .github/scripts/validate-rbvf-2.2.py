@@ -16,6 +16,7 @@ viewer = read('app/widget/viewer/viewer.cpp')
 explorer = read('app/widget/projectexplorer/projectexplorer.cpp')
 config = read('app/config/config.cpp')
 core = read('app/core.cpp')
+about = read('app/dialog/about/about.cpp')
 professional = read('app/professional/professionalcore.h')
 professional_test = read('tests/general/rb-professional-core-tests.cpp')
 general_tests = read('tests/general/CMakeLists.txt')
@@ -30,6 +31,15 @@ icon_index = main.index('QApplication::setWindowIcon(QIcon(QStringLiteral(":/gra
 assert icon_index > app_index
 assert 'olive-splash.png' not in qrc
 assert 'rb-videofire.png' in qrc
+
+# Welcome/About identity must survive cumulative patches.
+assert 'Bem-vindo ao RB VideoFire' in about
+assert 'O RB VideoFire é um editor de vídeo profissional desenvolvido para oferecer velocidade, precisão e liberdade criativa' in about
+assert 'Organize suas mídias, construa sua narrativa na timeline' in about
+assert 'Esta é uma versão Alpha.' in about
+assert 'RB VideoFire 2.2.0 Alpha Professional Editorial' in about
+assert 'JOSÉ FERNANDO - RB8 Digital' in about
+assert 'Crie. Edite. Conte sua história.' in about
 
 # Professional core contracts.
 assert 'add_subdirectory(professional)' in app_cmake
