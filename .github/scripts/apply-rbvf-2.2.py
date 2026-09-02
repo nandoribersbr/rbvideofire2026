@@ -37,13 +37,12 @@ about = about.replace('RB VideoFire 2.1.1 Alpha Editorial • RB8 Digital',
                       'RB VideoFire 2.2.0 Alpha Professional Editorial • RB8 Digital')
 write('app/dialog/about/about.cpp', about)
 
-# The recovery prompt uses adjacent C++ literals. Replace each literal rather
-# than relying on source indentation/formatting.
+# 2.1 already branded this prompt, so 2.2 evolves from the actual 2.1.1 output.
 core = read('app/core.cpp')
-first = 'The following projects had unsaved changes when Olive '
+first = 'The following projects had unsaved changes when RB VideoFire '
 second = 'forcefully quit. Would you like to load them?'
 if first not in core or second not in core:
-    raise RuntimeError('app/core.cpp: auto-recovery prompt literals not found')
+    raise RuntimeError('app/core.cpp: branded auto-recovery prompt literals not found')
 core = core.replace(first, 'RB VideoFire found recoverable project snapshots from the previous session. ')
 core = core.replace(second, 'Would you like to load them?')
 write('app/core.cpp', core)
