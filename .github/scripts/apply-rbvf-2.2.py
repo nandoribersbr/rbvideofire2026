@@ -37,15 +37,15 @@ about = about.replace('RB VideoFire 2.1.1 Alpha Editorial • RB8 Digital',
                       'RB VideoFire 2.2.0 Alpha Professional Editorial • RB8 Digital')
 write('app/dialog/about/about.cpp', about)
 
-# The upstream recovery prompt is split into adjacent C++ string literals.
-# Replace the exact block so the professional recovery wording is guaranteed.
+# The recovery prompt uses adjacent C++ literals. Replace each literal rather
+# than relying on source indentation/formatting.
 core = read('app/core.cpp')
-old_recovery = '''      AutoRecoveryDialog ard(tr("The following projects had unsaved changes when Olive "
-                                "forcefully quit. Would you like to load them?"),'''
-new_recovery = '''      AutoRecoveryDialog ard(tr("RB VideoFire found recoverable project snapshots from the previous session. "
-                                "Would you like to load them?"),'''
-if old_recovery not in core:
-    raise RuntimeError('app/core.cpp: split auto-recovery prompt block not found')
-write('app/core.cpp', core.replace(old_recovery, new_recovery))
+first = 'The following projects had unsaved changes when Olive '
+second = 'forcefully quit. Would you like to load them?'
+if first not in core or second not in core:
+    raise RuntimeError('app/core.cpp: auto-recovery prompt literals not found')
+core = core.replace(first, 'RB VideoFire found recoverable project snapshots from the previous session. ')
+core = core.replace(second, 'Would you like to load them?')
+write('app/core.cpp', core)
 
 print('Applied RB VideoFire 2.2 professional editorial identity')
