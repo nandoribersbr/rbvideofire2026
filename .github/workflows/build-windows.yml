@@ -41,13 +41,10 @@ jobs:
           $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
           python .github/scripts/apply-rbvf-2.1.py "$root" ".github/assets"
 
-          # Generate all public branding binaries from one canonical SVG source.
-          # This removes the corrupt Base64 path that previously caused libpng failures
-          # and guarantees the Windows ICO and Qt PNG represent the same RB identity.
           $svg = Resolve-Path '.github/assets/rb-videofire.svg'
           $png = Join-Path $root 'app/ui/graphics/rb-videofire.png'
           $ico = Join-Path $root 'app/packaging/windows/rb-videofire.ico'
-          magick -background none $svg -resize 256x256 -strip -define png:color-type=6 $png
+          magick -background none $svg -resize 256x256 -depth 8 -strip -define png:color-type=6 $png
           if ($LASTEXITCODE -ne 0 -or -not (Test-Path $png)) { throw 'Failed to generate RB VideoFire PNG from canonical SVG' }
           magick $png -define icon:auto-resize=256,128,64,48,32,24,16 $ico
           if ($LASTEXITCODE -ne 0 -or -not (Test-Path $ico)) { throw 'Failed to generate RB VideoFire multi-resolution ICO' }
@@ -64,12 +61,10 @@ jobs:
           $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
           python .github/scripts/apply-rbvf-2.1.1.py "$root"
 
-          # Re-encode the visual identity after all patches and regenerate the ICO.
-          # This validates the actual PNG bytes that Qt will embed.
           $png = Join-Path $root 'app/ui/graphics/rb-videofire.png'
           $pngFixed = Join-Path $root 'app/ui/graphics/rb-videofire-fixed.png'
           $ico = Join-Path $root 'app/packaging/windows/rb-videofire.ico'
-          magick $png -resize 256x256 -strip -define png:color-type=6 $pngFixed
+          magick $png -resize 256x256 -depth 8 -strip -define png:color-type=6 $pngFixed
           if ($LASTEXITCODE -ne 0) { throw 'RB VideoFire PNG is invalid or could not be re-encoded' }
           Move-Item -Force $pngFixed $png
           magick $png -define icon:auto-resize=256,128,64,48,32,24,16 $ico
