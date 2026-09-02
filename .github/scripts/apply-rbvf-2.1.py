@@ -1,5 +1,4 @@
 from pathlib import Path
-import base64
 import sys
 
 root = Path(sys.argv[1])
@@ -189,11 +188,9 @@ if icons not in ns:
     ns = ns.replace(needle, needle + icons)
 write("packaging/rb-videofire/RBVideoFire.nsi", ns)
 
-(root / "app/packaging/windows/rb-videofire.ico").write_bytes(
-    base64.b64decode((assets / "rb-videofire.ico.b64").read_text().strip())
-)
-(root / "app/ui/graphics/rb-videofire.png").write_bytes(
-    base64.b64decode((assets / "rb-videofire.png.b64").read_text().strip())
-)
+# Branding binaries are generated from the canonical SVG by the workflow. Keeping binary
+# generation out of this script avoids corrupt/truncated Base64 assets entering the build.
+(root / "app/ui/graphics").mkdir(parents=True, exist_ok=True)
+(root / "app/packaging/windows").mkdir(parents=True, exist_ok=True)
 
 print("Applied RB VideoFire 2.1 Alpha Editorial patch")
