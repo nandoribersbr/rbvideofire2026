@@ -1,10 +1,10 @@
-name: Build RB VideoFire 2.2 Alpha Professional Editorial
+name: Build RB VideoFire 2.2.1 Alpha Stability Audio
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - rb-videofire-2.2-professional-editorial-core
+      - rb-videofire-2.2.1-stability-audio-fix
 
 permissions:
   contents: read
@@ -13,81 +13,60 @@ jobs:
   build-windows:
     runs-on: windows-2022
     timeout-minutes: 180
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: jwlawson/actions-setup-cmake@v2
         with:
           cmake-version: 3.27.x
-
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
-
       - name: Install tools
         shell: pwsh
         run: |
           choco install ninja nsis -y
           Add-Content $env:GITHUB_PATH 'C:\Program Files (x86)\NSIS'
-
       - name: Extract native source baseline
         shell: pwsh
         run: Expand-Archive -Path 'RB_VideoFire_2.0.0_Alpha_Native_Avid_Editorial_Core_Cumulative_OneClick.zip' -DestinationPath source
-
-      - name: Apply RB VideoFire 2.1 editorial identity
+      - name: Apply cumulative RB VideoFire 2.1 and 2.2 core
         shell: pwsh
         run: |
           $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
           python .github/scripts/apply-rbvf-2.1.py "$root" ".github/assets"
-
           $svg = Resolve-Path '.github/assets/rb-videofire.svg'
           $png = Join-Path $root 'app/ui/graphics/rb-videofire.png'
           $ico = Join-Path $root 'app/packaging/windows/rb-videofire.ico'
           magick -background none $svg -resize 256x256 -depth 8 -strip -define png:color-type=6 $png
-          if ($LASTEXITCODE -ne 0 -or -not (Test-Path $png)) { throw 'Failed to generate RB VideoFire PNG from canonical SVG' }
           magick $png -define icon:auto-resize=256,128,64,48,32,24,16 $ico
-          if ($LASTEXITCODE -ne 0 -or -not (Test-Path $ico)) { throw 'Failed to generate RB VideoFire multi-resolution ICO' }
-
           $audit = Join-Path $root 'tools/audit-package.ps1'
           $auditText = Get-Content $audit -Raw
           $auditText = $auditText.Replace('-match "Record Monitor") "Record Monitor não aplicado."', '-match "Program Monitor") "Program Monitor não aplicado."')
           Set-Content -Path $audit -Value $auditText -Encoding UTF8
           python .github/scripts/validate-rbvf-2.1.py "$root"
-
-      - name: Apply RB VideoFire 2.1.1 startup language and icon fixes
-        shell: pwsh
-        run: |
-          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
           python .github/scripts/apply-rbvf-2.1.1.py "$root"
-
-          $png = Join-Path $root 'app/ui/graphics/rb-videofire.png'
-          $pngFixed = Join-Path $root 'app/ui/graphics/rb-videofire-fixed.png'
-          $ico = Join-Path $root 'app/packaging/windows/rb-videofire.ico'
-          magick $png -resize 256x256 -depth 8 -strip -define png:color-type=6 $pngFixed
-          if ($LASTEXITCODE -ne 0) { throw 'RB VideoFire PNG is invalid or could not be re-encoded' }
-          Move-Item -Force $pngFixed $png
+          $fixed = Join-Path $root 'app/ui/graphics/rb-videofire-fixed.png'
+          magick $png -resize 256x256 -depth 8 -strip -define png:color-type=6 $fixed
+          Move-Item -Force $fixed $png
           magick $png -define icon:auto-resize=256,128,64,48,32,24,16 $ico
-          if ($LASTEXITCODE -ne 0) { throw 'RB VideoFire ICO could not be generated' }
           python .github/scripts/validate-rbvf-2.1.1.py "$root"
-
-      - name: Verify professional core contract starts RED
-        shell: pwsh
-        run: |
-          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
-          python .github/scripts/validate-rbvf-2.2.py "$root"
-          if ($LASTEXITCODE -eq 0) { throw '2.2 validator unexpectedly passed before implementation' }
-          Write-Host 'RED confirmed: RB VideoFire 2.2 professional contract is absent before implementation.'
-          $global:LASTEXITCODE = 0
-
-      - name: Apply RB VideoFire 2.2 professional editorial core
-        shell: pwsh
-        run: |
-          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
           python .github/scripts/apply-rbvf-2.2.py "$root"
           python .github/scripts/apply-rbvf-2.2-core.py "$root"
           python .github/scripts/validate-rbvf-2.2.py "$root"
-
+      - name: Verify 2.2.1 stability contract starts RED
+        shell: pwsh
+        run: |
+          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
+          python .github/scripts/validate-rbvf-2.2.1.py "$root"
+          if ($LASTEXITCODE -eq 0) { throw '2.2.1 validator unexpectedly passed before implementation' }
+          Write-Host 'RED confirmed for 2.2.1 stability corrections.'
+          $global:LASTEXITCODE = 0
+      - name: Apply RB VideoFire 2.2.1 audited stability corrections
+        shell: pwsh
+        run: |
+          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
+          python .github/scripts/apply-rbvf-2.2.1.py "$root"
+          python .github/scripts/validate-rbvf-2.2.1.py "$root"
       - name: Acquire native dependencies
         shell: pwsh
         run: |
@@ -97,103 +76,63 @@ jobs:
           tar -xzf native-deps.tar.gz
           "NATIVE_DEPS_ROOT=$((Get-Location).Path)\install" | Out-File -FilePath $env:GITHUB_ENV -Append
           "$((Get-Location).Path)\install\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
-
       - name: Configure build
         shell: pwsh
         run: |
           $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
           cmake -S $root -B "$root/build-native" -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DCMAKE_PREFIX_PATH="$env:NATIVE_DEPS_ROOT"
-
       - name: Compile
         shell: pwsh
         run: cmake --build source/RB_VideoFire_2.0.0_Alpha_Native/build-native --config Release
-
       - name: Test
         shell: pwsh
         run: ctest --test-dir source/RB_VideoFire_2.0.0_Alpha_Native/build-native -C Release --output-on-failure
-
       - name: Deploy runtime
         shell: pwsh
         run: |
           $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
-          $build = Join-Path $root 'build-native'
-          $dist = Join-Path $root 'dist'
-          $portable = Join-Path $dist 'portable'
-          $symbols = Join-Path $dist 'symbols'
+          $build = Join-Path $root 'build-native'; $dist = Join-Path $root 'dist'; $portable = Join-Path $dist 'portable'; $symbols = Join-Path $dist 'symbols'
           New-Item -ItemType Directory -Force $portable,$symbols | Out-Null
-
           $exe = Get-ChildItem $build -Filter RBVideoFire.exe -Recurse | Select-Object -First 1
           if (-not $exe) { throw 'RBVideoFire.exe not produced' }
           Copy-Item $exe.FullName $portable
           Get-ChildItem $build -Filter *.pdb -Recurse | Copy-Item -Destination $symbols
-
           windeployqt --release --no-translations --compiler-runtime (Join-Path $portable 'RBVideoFire.exe')
           Copy-Item "$env:NATIVE_DEPS_ROOT/bin/*.dll" $portable -Force
           Get-ChildItem $portable -Filter *.pdb -Recurse | Remove-Item -Force
           Copy-Item "$root/LICENSE" "$portable/LICENSE.txt"
-
       - name: Startup smoke test
         shell: pwsh
         run: |
-          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
-          $portable = Join-Path $root 'dist/portable'
-          $exe = Join-Path $portable 'RBVideoFire.exe'
-          $stdout = Join-Path $env:RUNNER_TEMP 'rbvf-startup-out.txt'
-          $stderr = Join-Path $env:RUNNER_TEMP 'rbvf-startup-err.txt'
-
-          $env:QT_OPENGL = 'software'
-          $process = Start-Process -FilePath $exe -WorkingDirectory $portable -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'; $portable = Join-Path $root 'dist/portable'; $exe = Join-Path $portable 'RBVideoFire.exe'
+          $stdout = Join-Path $env:RUNNER_TEMP 'rbvf-out.txt'; $stderr = Join-Path $env:RUNNER_TEMP 'rbvf-err.txt'; $env:QT_OPENGL='software'
+          $p=Start-Process -FilePath $exe -WorkingDirectory $portable -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
           Start-Sleep -Seconds 8
-
-          $outText = if (Test-Path $stdout) { Get-Content $stdout -Raw } else { '' }
-          $errText = if (Test-Path $stderr) { Get-Content $stderr -Raw } else { '' }
-          $combined = "$outText`n$errText"
-
-          if ($process.HasExited) {
-            Write-Host $combined
-            throw "RBVideoFire.exe exited during startup smoke test with code $($process.ExitCode)"
-          }
-
-          if ($combined -match '(?i)\[FATAL\]|QPixmap: Must construct|libpng error|bad adaptive filter') {
-            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-            Write-Host $combined
-            throw 'Startup regression detected in RB VideoFire runtime output'
-          }
-
-          Stop-Process -Id $process.Id -Force
-          Write-Host 'RB VideoFire 2.2 startup smoke test passed.'
-
+          $combined="$(if(Test-Path $stdout){Get-Content $stdout -Raw})`n$(if(Test-Path $stderr){Get-Content $stderr -Raw})"
+          if($p.HasExited){ throw "RBVideoFire.exe exited during startup: $($p.ExitCode) $combined" }
+          if($combined -match '(?i)\[FATAL\]|QPixmap: Must construct|libpng error|bad adaptive filter'){ Stop-Process -Id $p.Id -Force; throw "Startup regression: $combined" }
+          Stop-Process -Id $p.Id -Force
       - name: Package and audit
         shell: pwsh
         run: |
-          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
-          $dist = Join-Path $root 'dist'
-          $portable = Join-Path $dist 'portable'
-          $symbols = Join-Path $dist 'symbols'
-
+          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'; $dist=Join-Path $root 'dist'; $portable=Join-Path $dist 'portable'; $symbols=Join-Path $dist 'symbols'
           powershell -NoProfile -ExecutionPolicy Bypass -File "$root/tools/audit-package.ps1" -Root $root -Portable $portable
-          Compress-Archive -Path "$portable/*" -DestinationPath "$dist/RB_VideoFire_2.2.0_Alpha_Professional_Editorial_Portable.zip" -Force
-
-          if (-not (Get-ChildItem $symbols -Filter *.pdb)) {
-            Set-Content "$symbols/README.txt" 'No PDB emitted'
-          }
-          Compress-Archive -Path "$symbols/*" -DestinationPath "$dist/RB_VideoFire_2.2.0_Alpha_Professional_Editorial_Symbols.zip" -Force
-
+          Compress-Archive -Path "$portable/*" -DestinationPath "$dist/RB_VideoFire_2.2.1_Alpha_Stability_Audio_Portable.zip" -Force
+          if(-not(Get-ChildItem $symbols -Filter *.pdb)){Set-Content "$symbols/README.txt" 'No PDB emitted'}
+          Compress-Archive -Path "$symbols/*" -DestinationPath "$dist/RB_VideoFire_2.2.1_Alpha_Stability_Audio_Symbols.zip" -Force
           makensis /DX64 "/DSOURCE_ROOT=$root" "$root/packaging/rb-videofire/RBVideoFire.nsi"
-          $installer = Join-Path $dist 'RB VideoFire Setup 2.2.0 Alpha Professional Editorial.exe'
+          $installer=Join-Path $dist 'RB VideoFire Setup 2.2.1 Alpha Stability Audio.exe'
           powershell -NoProfile -ExecutionPolicy Bypass -File "$root/tools/audit-package.ps1" -Root $root -Portable $portable -Installer $installer
-
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: RB-VideoFire-2.2.0-Alpha-Professional-Editorial-Installer
-          path: source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB VideoFire Setup 2.2.0 Alpha Professional Editorial.exe
+          name: RB-VideoFire-2.2.1-Alpha-Stability-Audio-Installer
+          path: source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB VideoFire Setup 2.2.1 Alpha Stability Audio.exe
           if-no-files-found: error
-
       - name: Upload portable and symbols
         uses: actions/upload-artifact@v4
         with:
-          name: RB-VideoFire-2.2.0-Alpha-Professional-Editorial-Packages
+          name: RB-VideoFire-2.2.1-Alpha-Stability-Audio-Packages
           path: |
-            source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.2.0_Alpha_Professional_Editorial_Portable.zip
-            source/RB_VideoFire_2.2.0_Alpha_Professional_Editorial_Symbols.zip
+            source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.2.1_Alpha_Stability_Audio_Portable.zip
+            source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.2.1_Alpha_Stability_Audio_Symbols.zip
