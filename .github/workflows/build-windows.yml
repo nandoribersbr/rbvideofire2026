@@ -1,10 +1,10 @@
-name: Build RB VideoFire 2.1.1 Alpha Editorial
+name: Build RB VideoFire 2.2 Alpha Professional Editorial
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - rb-videofire-2.1-editorial-branding
+      - rb-videofire-2.2-professional-editorial-core
 
 permissions:
   contents: read
@@ -55,7 +55,7 @@ jobs:
           Set-Content -Path $audit -Value $auditText -Encoding UTF8
           python .github/scripts/validate-rbvf-2.1.py "$root"
 
-      - name: Apply RB VideoFire 2.1.1 language and icon fix
+      - name: Apply RB VideoFire 2.1.1 startup language and icon fixes
         shell: pwsh
         run: |
           $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
@@ -69,8 +69,24 @@ jobs:
           Move-Item -Force $pngFixed $png
           magick $png -define icon:auto-resize=256,128,64,48,32,24,16 $ico
           if ($LASTEXITCODE -ne 0) { throw 'RB VideoFire ICO could not be generated' }
-
           python .github/scripts/validate-rbvf-2.1.1.py "$root"
+
+      - name: Verify professional core contract starts RED
+        shell: pwsh
+        run: |
+          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
+          python .github/scripts/validate-rbvf-2.2.py "$root"
+          if ($LASTEXITCODE -eq 0) { throw '2.2 validator unexpectedly passed before implementation' }
+          Write-Host 'RED confirmed: RB VideoFire 2.2 professional contract is absent before implementation.'
+          $global:LASTEXITCODE = 0
+
+      - name: Apply RB VideoFire 2.2 professional editorial core
+        shell: pwsh
+        run: |
+          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
+          python .github/scripts/apply-rbvf-2.2.py "$root"
+          python .github/scripts/apply-rbvf-2.2-core.py "$root"
+          python .github/scripts/validate-rbvf-2.2.py "$root"
 
       - name: Acquire native dependencies
         shell: pwsh
@@ -141,11 +157,11 @@ jobs:
           if ($combined -match '(?i)\[FATAL\]|QPixmap: Must construct|libpng error|bad adaptive filter') {
             Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
             Write-Host $combined
-            throw 'Fatal startup/icon error detected in RB VideoFire runtime output'
+            throw 'Startup regression detected in RB VideoFire runtime output'
           }
 
           Stop-Process -Id $process.Id -Force
-          Write-Host 'RB VideoFire startup smoke test passed: process stayed alive with no fatal QPixmap/libpng error.'
+          Write-Host 'RB VideoFire 2.2 startup smoke test passed.'
 
       - name: Package and audit
         shell: pwsh
@@ -156,28 +172,28 @@ jobs:
           $symbols = Join-Path $dist 'symbols'
 
           powershell -NoProfile -ExecutionPolicy Bypass -File "$root/tools/audit-package.ps1" -Root $root -Portable $portable
-          Compress-Archive -Path "$portable/*" -DestinationPath "$dist/RB_VideoFire_2.1.1_Alpha_Editorial_Portable.zip" -Force
+          Compress-Archive -Path "$portable/*" -DestinationPath "$dist/RB_VideoFire_2.2.0_Alpha_Professional_Editorial_Portable.zip" -Force
 
           if (-not (Get-ChildItem $symbols -Filter *.pdb)) {
             Set-Content "$symbols/README.txt" 'No PDB emitted'
           }
-          Compress-Archive -Path "$symbols/*" -DestinationPath "$dist/RB_VideoFire_2.1.1_Alpha_Editorial_Symbols.zip" -Force
+          Compress-Archive -Path "$symbols/*" -DestinationPath "$dist/RB_VideoFire_2.2.0_Alpha_Professional_Editorial_Symbols.zip" -Force
 
           makensis /DX64 "/DSOURCE_ROOT=$root" "$root/packaging/rb-videofire/RBVideoFire.nsi"
-          $installer = Join-Path $dist 'RB VideoFire Setup 2.1.1 Alpha Editorial.exe'
+          $installer = Join-Path $dist 'RB VideoFire Setup 2.2.0 Alpha Professional Editorial.exe'
           powershell -NoProfile -ExecutionPolicy Bypass -File "$root/tools/audit-package.ps1" -Root $root -Portable $portable -Installer $installer
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: RB-VideoFire-2.1.1-Alpha-Editorial-Installer
-          path: source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB VideoFire Setup 2.1.1 Alpha Editorial.exe
+          name: RB-VideoFire-2.2.0-Alpha-Professional-Editorial-Installer
+          path: source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB VideoFire Setup 2.2.0 Alpha Professional Editorial.exe
           if-no-files-found: error
 
       - name: Upload portable and symbols
         uses: actions/upload-artifact@v4
         with:
-          name: RB-VideoFire-2.1.1-Alpha-Editorial-Packages
+          name: RB-VideoFire-2.2.0-Alpha-Professional-Editorial-Packages
           path: |
-            source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.1.1_Alpha_Editorial_Portable.zip
-            source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.1.1_Alpha_Editorial_Symbols.zip
+            source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.2.0_Alpha_Professional_Editorial_Portable.zip
+            source/RB_VideoFire_2.2.0_Alpha_Professional_Editorial_Symbols.zip
