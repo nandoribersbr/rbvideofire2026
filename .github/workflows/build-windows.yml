@@ -51,6 +51,18 @@ jobs:
         run: |
           $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
           python .github/scripts/apply-rbvf-2.1.1.py "$root"
+
+          # Re-encode the visual identity using ImageMagick. This both validates the PNG
+          # and creates a clean multi-resolution Windows ICO from the exact same RB artwork.
+          $png = Join-Path $root 'app/ui/graphics/rb-videofire.png'
+          $pngFixed = Join-Path $root 'app/ui/graphics/rb-videofire-fixed.png'
+          $ico = Join-Path $root 'app/packaging/windows/rb-videofire.ico'
+          magick $png -resize 256x256 -strip -define png:color-type=6 $pngFixed
+          if ($LASTEXITCODE -ne 0) { throw 'RB VideoFire PNG is invalid or could not be re-encoded' }
+          Move-Item -Force $pngFixed $png
+          magick $png -define icon:auto-resize=256,128,64,48,32,24,16 $ico
+          if ($LASTEXITCODE -ne 0) { throw 'RB VideoFire ICO could not be generated' }
+
           python .github/scripts/validate-rbvf-2.1.1.py "$root"
 
       - name: Acquire native dependencies
@@ -77,7 +89,7 @@ jobs:
         shell: pwsh
         run: ctest --test-dir source/RB_VideoFire_2.0.0_Alpha_Native/build-native -C Release --output-on-failure
 
-      - name: Deploy and package
+      - name: Deploy runtime
         shell: pwsh
         run: |
           $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
@@ -96,6 +108,45 @@ jobs:
           Copy-Item "$env:NATIVE_DEPS_ROOT/bin/*.dll" $portable -Force
           Get-ChildItem $portable -Filter *.pdb -Recurse | Remove-Item -Force
           Copy-Item "$root/LICENSE" "$portable/LICENSE.txt"
+
+      - name: Startup smoke test
+        shell: pwsh
+        run: |
+          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
+          $portable = Join-Path $root 'dist/portable'
+          $exe = Join-Path $portable 'RBVideoFire.exe'
+          $stdout = Join-Path $env:RUNNER_TEMP 'rbvf-startup-out.txt'
+          $stderr = Join-Path $env:RUNNER_TEMP 'rbvf-startup-err.txt'
+
+          $env:QT_OPENGL = 'software'
+          $process = Start-Process -FilePath $exe -WorkingDirectory $portable -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          Start-Sleep -Seconds 8
+
+          $outText = if (Test-Path $stdout) { Get-Content $stdout -Raw } else { '' }
+          $errText = if (Test-Path $stderr) { Get-Content $stderr -Raw } else { '' }
+          $combined = "$outText`n$errText"
+
+          if ($process.HasExited) {
+            Write-Host $combined
+            throw "RBVideoFire.exe exited during startup smoke test with code $($process.ExitCode)"
+          }
+
+          if ($combined -match '(?i)\[FATAL\]|QPixmap: Must construct|libpng error|bad adaptive filter') {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            Write-Host $combined
+            throw 'Fatal startup/icon error detected in RB VideoFire runtime output'
+          }
+
+          Stop-Process -Id $process.Id -Force
+          Write-Host 'RB VideoFire startup smoke test passed: process stayed alive with no fatal QPixmap/libpng error.'
+
+      - name: Package and audit
+        shell: pwsh
+        run: |
+          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
+          $dist = Join-Path $root 'dist'
+          $portable = Join-Path $dist 'portable'
+          $symbols = Join-Path $dist 'symbols'
 
           powershell -NoProfile -ExecutionPolicy Bypass -File "$root/tools/audit-package.ps1" -Root $root -Portable $portable
           Compress-Archive -Path "$portable/*" -DestinationPath "$dist/RB_VideoFire_2.1.1_Alpha_Editorial_Portable.zip" -Force
