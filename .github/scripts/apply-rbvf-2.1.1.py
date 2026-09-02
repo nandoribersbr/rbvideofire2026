@@ -118,7 +118,7 @@ if old_accept not in prefs:
     raise RuntimeError("Preferences language persistence block not found")
 write("app/dialog/preferences/tabs/preferencesgeneraltab.cpp", prefs.replace(old_accept, new_accept))
 
-# The About/Welcome dialog must visibly show the RB logo and must never silently render blank.
+# Welcome/About: load the embedded RB asset and retain a visible text fallback.
 about = read("app/dialog/about/about.cpp")
 if "#include <QPixmap>" not in about:
     about = about.replace("#include <QLabel>", "#include <QLabel>\n#include <QPixmap>")
@@ -143,8 +143,12 @@ about = about.replace("RB VideoFire 2.1 Alpha Editorial • RB8 Digital",
                       "RB VideoFire 2.1.1 Alpha Editorial • RB8 Digital")
 write("app/dialog/about/about.cpp", about)
 
-# Force the runtime window/taskbar icon from the embedded Qt resource. Windows can otherwise
-# display a corrupted/default icon even when the PE resource contains an .ico.
+# Do not embed the legacy Olive splash in the public Qt resource bundle.
+qrc = read("app/ui/graphics/graphics.qrc")
+qrc = qrc.replace("        <file>olive-splash.png</file>\n", "")
+write("app/ui/graphics/graphics.qrc", qrc)
+
+# Runtime window/taskbar icon. QIcon/QPixmap-backed resources MUST be touched only after QApplication exists.
 main = read("app/main.cpp")
 if "#include <QIcon>" not in main:
     marker = "#include <QGuiApplication>"
@@ -152,12 +156,12 @@ if "#include <QIcon>" not in main:
         main = main.replace(marker, marker + "\n#include <QIcon>")
     else:
         main = "#include <QIcon>\n" + main
-app_name = '  QCoreApplication::setApplicationName("RB VideoFire");'
-icon_line = '  QApplication::setWindowIcon(QIcon(QStringLiteral(":/graphics/rb-videofire.png")));'
-if icon_line not in main:
-    if app_name not in main:
-        raise RuntimeError("RB VideoFire application name marker not found")
-    main = main.replace(app_name, app_name + "\n" + icon_line)
+icon_line = '    QApplication::setWindowIcon(QIcon(QStringLiteral(":/graphics/rb-videofire.png")));'
+if 'QApplication::setWindowIcon(QIcon(QStringLiteral(":/graphics/rb-videofire.png")));' not in main:
+    app_construct = '    a.reset(new QApplication(argc, argv));'
+    if app_construct not in main:
+        raise RuntimeError("QApplication construction marker not found")
+    main = main.replace(app_construct, app_construct + "\n" + icon_line)
 write("app/main.cpp", main)
 
-print("Applied RB VideoFire 2.1.1 language and runtime icon patch")
+print("Applied RB VideoFire 2.1.1 startup/language/icon patch")
