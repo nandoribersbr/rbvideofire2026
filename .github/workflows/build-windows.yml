@@ -1,4 +1,4 @@
-name: Build RB VideoFire 2.1.0 Alpha Editorial
+name: Build RB VideoFire 2.1.1 Alpha Editorial
 
 on:
   workflow_dispatch:
@@ -31,11 +31,11 @@ jobs:
           choco install ninja nsis -y
           Add-Content $env:GITHUB_PATH 'C:\Program Files (x86)\NSIS'
 
-      - name: Extract 2.0 native source baseline
+      - name: Extract native source baseline
         shell: pwsh
         run: Expand-Archive -Path 'RB_VideoFire_2.0.0_Alpha_Native_Avid_Editorial_Core_Cumulative_OneClick.zip' -DestinationPath source
 
-      - name: Apply RB VideoFire 2.1 editorial patch
+      - name: Apply RB VideoFire 2.1 editorial identity
         shell: pwsh
         run: |
           $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
@@ -46,6 +46,13 @@ jobs:
           Set-Content -Path $audit -Value $auditText -Encoding UTF8
           python .github/scripts/validate-rbvf-2.1.py "$root"
 
+      - name: Apply RB VideoFire 2.1.1 language and icon fix
+        shell: pwsh
+        run: |
+          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
+          python .github/scripts/apply-rbvf-2.1.1.py "$root"
+          python .github/scripts/validate-rbvf-2.1.1.py "$root"
+
       - name: Acquire native dependencies
         shell: pwsh
         run: |
@@ -53,14 +60,14 @@ jobs:
           Set-Location deps
           curl.exe -fL 'https://github.com/olive-editor/dependencies/releases/download/continuous/olive-dep-win32-Release.tar.gz' -o native-deps.tar.gz
           tar -xzf native-deps.tar.gz
-          "OLIVE_DEPS_ROOT=$((Get-Location).Path)\install" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "NATIVE_DEPS_ROOT=$((Get-Location).Path)\install" | Out-File -FilePath $env:GITHUB_ENV -Append
           "$((Get-Location).Path)\install\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Configure build
         shell: pwsh
         run: |
           $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
-          cmake -S $root -B "$root/build-native" -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DCMAKE_PREFIX_PATH="$env:OLIVE_DEPS_ROOT"
+          cmake -S $root -B "$root/build-native" -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DCMAKE_PREFIX_PATH="$env:NATIVE_DEPS_ROOT"
 
       - name: Compile
         shell: pwsh
@@ -86,33 +93,33 @@ jobs:
           Get-ChildItem $build -Filter *.pdb -Recurse | Copy-Item -Destination $symbols
 
           windeployqt --release --no-translations --compiler-runtime (Join-Path $portable 'RBVideoFire.exe')
-          Copy-Item "$env:OLIVE_DEPS_ROOT/bin/*.dll" $portable -Force
+          Copy-Item "$env:NATIVE_DEPS_ROOT/bin/*.dll" $portable -Force
           Get-ChildItem $portable -Filter *.pdb -Recurse | Remove-Item -Force
           Copy-Item "$root/LICENSE" "$portable/LICENSE.txt"
 
           powershell -NoProfile -ExecutionPolicy Bypass -File "$root/tools/audit-package.ps1" -Root $root -Portable $portable
-          Compress-Archive -Path "$portable/*" -DestinationPath "$dist/RB_VideoFire_2.1.0_Alpha_Editorial_Portable.zip" -Force
+          Compress-Archive -Path "$portable/*" -DestinationPath "$dist/RB_VideoFire_2.1.1_Alpha_Editorial_Portable.zip" -Force
 
           if (-not (Get-ChildItem $symbols -Filter *.pdb)) {
             Set-Content "$symbols/README.txt" 'No PDB emitted'
           }
-          Compress-Archive -Path "$symbols/*" -DestinationPath "$dist/RB_VideoFire_2.1.0_Alpha_Editorial_Symbols.zip" -Force
+          Compress-Archive -Path "$symbols/*" -DestinationPath "$dist/RB_VideoFire_2.1.1_Alpha_Editorial_Symbols.zip" -Force
 
           makensis /DX64 "/DSOURCE_ROOT=$root" "$root/packaging/rb-videofire/RBVideoFire.nsi"
-          $installer = Join-Path $dist 'RB VideoFire Setup 2.1.0 Alpha Editorial.exe'
+          $installer = Join-Path $dist 'RB VideoFire Setup 2.1.1 Alpha Editorial.exe'
           powershell -NoProfile -ExecutionPolicy Bypass -File "$root/tools/audit-package.ps1" -Root $root -Portable $portable -Installer $installer
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: RB-VideoFire-2.1.0-Alpha-Editorial-Installer
-          path: source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB VideoFire Setup 2.1.0 Alpha Editorial.exe
+          name: RB-VideoFire-2.1.1-Alpha-Editorial-Installer
+          path: source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB VideoFire Setup 2.1.1 Alpha Editorial.exe
           if-no-files-found: error
 
       - name: Upload portable and symbols
         uses: actions/upload-artifact@v4
         with:
-          name: RB-VideoFire-2.1.0-Alpha-Editorial-Packages
+          name: RB-VideoFire-2.1.1-Alpha-Editorial-Packages
           path: |
-            source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.1.0_Alpha_Editorial_Portable.zip
-            source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.1.0_Alpha_Editorial_Symbols.zip
+            source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.1.1_Alpha_Editorial_Portable.zip
+            source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.1.1_Alpha_Editorial_Symbols.zip
