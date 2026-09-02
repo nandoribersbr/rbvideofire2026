@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#18191d"/><stop offset="1" stop-color="#050506"/></linearGradient>
+    <linearGradient id="red" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff2b20"/><stop offset="0.55" stop-color="#d30000"/><stop offset="1" stop-color="#6e0000"/></linearGradient>
+    <linearGradient id="silver" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="0.45" stop-color="#c9c9c9"/><stop offset="1" stop-color="#5e5e62"/></linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f5f5f5"/><stop offset="0.35" stop-color="#616269"/><stop offset="0.7" stop-color="#15161a"/><stop offset="1" stop-color="#e0e0e0"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000" flood-opacity="0.75"/></filter>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="72" fill="url(#bg)" stroke="#4b4c53" stroke-width="8"/>
+  <path d="M74 172 C122 78 262 59 356 111 C403 137 433 177 430 219" fill="none" stroke="url(#metal)" stroke-width="34" stroke-linecap="round" filter="url(#shadow)"/>
+  <path d="M82 174 C129 91 258 74 345 120" fill="none" stroke="#0b0b0d" stroke-width="12" stroke-dasharray="18 12" stroke-linecap="round"/>
+  <path d="M427 218 C429 267 393 293 351 292" fill="none" stroke="url(#metal)" stroke-width="34" stroke-linecap="round"/>
+  <path d="M420 220 C418 256 393 277 354 279" fill="none" stroke="#0b0b0d" stroke-width="12" stroke-dasharray="18 12" stroke-linecap="round"/>
+  <text x="73" y="337" font-family="Arial Black,Arial,sans-serif" font-size="194" font-weight="900" fill="url(#red)" stroke="#480000" stroke-width="3">R</text>
+  <text x="231" y="337" font-family="Arial Black,Arial,sans-serif" font-size="194" font-weight="900" fill="url(#silver)" stroke="#3c3c40" stroke-width="3">B</text>
+  <text x="83" y="406" font-family="Arial,Helvetica,sans-serif" font-size="45" font-weight="700" letter-spacing="8" fill="#d8d8dc">VIDEO</text>
+  <text x="280" y="406" font-family="Arial,Helvetica,sans-serif" font-size="45" font-weight="700" letter-spacing="6" fill="#e51616">FIRE</text>
+  <polygon points="240,438 273,456 240,474" fill="#e51616"/>
+</svg>
