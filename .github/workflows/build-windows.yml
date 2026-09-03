@@ -1,10 +1,10 @@
-name: Build RB VideoFire 2.3.0 Professional Editing Reliability
+name: Build RB VideoFire 2.4.0 Professional Workspace
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - rb-videofire-2.3.0-professional-editing-reliability
+      - rb-videofire-2.4.0-professional-workspace
 
 permissions:
   contents: read
@@ -29,46 +29,40 @@ jobs:
       - name: Extract native source baseline
         shell: pwsh
         run: Expand-Archive -Path 'RB_VideoFire_2.0.0_Alpha_Native_Avid_Editorial_Core_Cumulative_OneClick.zip' -DestinationPath source
-      - name: Apply cumulative RB VideoFire core
+      - name: Apply cumulative RB VideoFire core through 2.3
         shell: pwsh
         run: |
           $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
           python .github/scripts/apply-rbvf-2.1.py "$root" ".github/assets"
-          $svg = Resolve-Path '.github/assets/rb-videofire.svg'
-          $png = Join-Path $root 'app/ui/graphics/rb-videofire.png'
-          $ico = Join-Path $root 'app/packaging/windows/rb-videofire.ico'
+          $svg=Resolve-Path '.github/assets/rb-videofire.svg'; $png=Join-Path $root 'app/ui/graphics/rb-videofire.png'; $ico=Join-Path $root 'app/packaging/windows/rb-videofire.ico'
           magick -background none $svg -resize 256x256 -depth 8 -strip -define png:color-type=6 $png
           magick $png -define icon:auto-resize=256,128,64,48,32,24,16 $ico
-          $audit = Join-Path $root 'tools/audit-package.ps1'
-          $auditText = Get-Content $audit -Raw
-          $auditText = $auditText.Replace('-match "Record Monitor") "Record Monitor não aplicado."', '-match "Program Monitor") "Program Monitor não aplicado."')
-          Set-Content -Path $audit -Value $auditText -Encoding UTF8
+          $audit=Join-Path $root 'tools/audit-package.ps1'; $auditText=Get-Content $audit -Raw; $auditText=$auditText.Replace('-match "Record Monitor") "Record Monitor não aplicado."','-match "Program Monitor") "Program Monitor não aplicado."'); Set-Content -Path $audit -Value $auditText -Encoding UTF8
           python .github/scripts/validate-rbvf-2.1.py "$root"
           python .github/scripts/apply-rbvf-2.1.1.py "$root"
-          $fixed = Join-Path $root 'app/ui/graphics/rb-videofire-fixed.png'
-          magick $png -resize 256x256 -depth 8 -strip -define png:color-type=6 $fixed
-          Move-Item -Force $fixed $png
-          magick $png -define icon:auto-resize=256,128,64,48,32,24,16 $ico
+          $fixed=Join-Path $root 'app/ui/graphics/rb-videofire-fixed.png'; magick $png -resize 256x256 -depth 8 -strip -define png:color-type=6 $fixed; Move-Item -Force $fixed $png; magick $png -define icon:auto-resize=256,128,64,48,32,24,16 $ico
           python .github/scripts/validate-rbvf-2.1.1.py "$root"
           python .github/scripts/apply-rbvf-2.2.py "$root"
           python .github/scripts/apply-rbvf-2.2-core.py "$root"
           python .github/scripts/validate-rbvf-2.2.py "$root"
           python .github/scripts/apply-rbvf-2.2.1.py "$root"
           python .github/scripts/validate-rbvf-2.2.1.py "$root"
-      - name: Verify 2.3 reliability contract starts RED
-        shell: pwsh
-        run: |
-          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
-          python .github/scripts/validate-rbvf-2.3.py "$root"
-          if ($LASTEXITCODE -eq 0) { throw '2.3 validator unexpectedly passed before implementation' }
-          Write-Host 'RED confirmed for 2.3 reliability contract.'
-          $global:LASTEXITCODE = 0
-      - name: Apply RB VideoFire 2.3 reliability baseline
-        shell: pwsh
-        run: |
-          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
           python .github/scripts/apply-rbvf-2.3.py "$root"
           python .github/scripts/validate-rbvf-2.3.py "$root"
+      - name: Verify 2.4 contract starts RED
+        shell: pwsh
+        run: |
+          $root=Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
+          python .github/scripts/validate-rbvf-2.4.py "$root"
+          if ($LASTEXITCODE -eq 0) { throw '2.4 validator unexpectedly passed before implementation' }
+          Write-Host 'RED confirmed for 2.4 professional workspace.'
+          $global:LASTEXITCODE=0
+      - name: Apply and validate 2.4 workspace foundation
+        shell: pwsh
+        run: |
+          $root=Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
+          python .github/scripts/apply-rbvf-2.4.py "$root"
+          python .github/scripts/validate-rbvf-2.4.py "$root"
       - name: Acquire native dependencies
         shell: pwsh
         run: |
@@ -81,7 +75,7 @@ jobs:
       - name: Configure build
         shell: pwsh
         run: |
-          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
+          $root=Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
           cmake -S $root -B "$root/build-native" -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DCMAKE_PREFIX_PATH="$env:NATIVE_DEPS_ROOT"
       - name: Compile
         shell: pwsh
@@ -92,50 +86,40 @@ jobs:
       - name: Deploy runtime
         shell: pwsh
         run: |
-          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'; $build = Join-Path $root 'build-native'; $dist = Join-Path $root 'dist'; $portable = Join-Path $dist 'portable'; $symbols = Join-Path $dist 'symbols'
+          $root=Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'; $build=Join-Path $root 'build-native'; $dist=Join-Path $root 'dist'; $portable=Join-Path $dist 'portable'; $symbols=Join-Path $dist 'symbols'
           New-Item -ItemType Directory -Force $portable,$symbols | Out-Null
-          $exe = Get-ChildItem $build -Filter RBVideoFire.exe -Recurse | Select-Object -First 1
-          if (-not $exe) { throw 'RBVideoFire.exe not produced' }
-          Copy-Item $exe.FullName $portable
-          Get-ChildItem $build -Filter *.pdb -Recurse | Copy-Item -Destination $symbols
+          $exe=Get-ChildItem $build -Filter RBVideoFire.exe -Recurse | Select-Object -First 1; if(-not $exe){throw 'RBVideoFire.exe not produced'}
+          Copy-Item $exe.FullName $portable; Get-ChildItem $build -Filter *.pdb -Recurse | Copy-Item -Destination $symbols
           windeployqt --release --no-translations --compiler-runtime (Join-Path $portable 'RBVideoFire.exe')
-          Copy-Item "$env:NATIVE_DEPS_ROOT/bin/*.dll" $portable -Force
-          Get-ChildItem $portable -Filter *.pdb -Recurse | Remove-Item -Force
-          Copy-Item "$root/LICENSE" "$portable/LICENSE.txt"
+          Copy-Item "$env:NATIVE_DEPS_ROOT/bin/*.dll" $portable -Force; Get-ChildItem $portable -Filter *.pdb -Recurse | Remove-Item -Force; Copy-Item "$root/LICENSE" "$portable/LICENSE.txt"
       - name: Startup smoke test
         shell: pwsh
         run: |
-          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'; $portable = Join-Path $root 'dist/portable'; $exe = Join-Path $portable 'RBVideoFire.exe'
-          $stdout = Join-Path $env:RUNNER_TEMP 'rbvf-out.txt'; $stderr = Join-Path $env:RUNNER_TEMP 'rbvf-err.txt'; $env:QT_OPENGL='software'
-          $p=Start-Process -FilePath $exe -WorkingDirectory $portable -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
-          Start-Sleep -Seconds 8
-          $combined="$(if(Test-Path $stdout){Get-Content $stdout -Raw})`n$(if(Test-Path $stderr){Get-Content $stderr -Raw})"
-          if($p.HasExited){ throw "RBVideoFire.exe exited during startup: $($p.ExitCode) $combined" }
-          if($combined -match '(?i)\[FATAL\]|QPixmap: Must construct|libpng error|bad adaptive filter'){ Stop-Process -Id $p.Id -Force; throw "Startup regression: $combined" }
-          Stop-Process -Id $p.Id -Force
+          $root=Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'; $portable=Join-Path $root 'dist/portable'; $exe=Join-Path $portable 'RBVideoFire.exe'; $stdout=Join-Path $env:RUNNER_TEMP 'rbvf-out.txt'; $stderr=Join-Path $env:RUNNER_TEMP 'rbvf-err.txt'; $env:QT_OPENGL='software'
+          $p=Start-Process -FilePath $exe -WorkingDirectory $portable -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr; Start-Sleep -Seconds 8
+          $combined="$(if(Test-Path $stdout){Get-Content $stdout -Raw})`n$(if(Test-Path $stderr){Get-Content $stderr -Raw})"; if($p.HasExited){throw "RBVideoFire.exe exited during startup: $($p.ExitCode) $combined"}; if($combined -match '(?i)\[FATAL\]|QPixmap: Must construct|libpng error|bad adaptive filter'){Stop-Process -Id $p.Id -Force; throw "Startup regression: $combined"}; Stop-Process -Id $p.Id -Force
       - name: Package and audit
         shell: pwsh
         run: |
-          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'; $dist=Join-Path $root 'dist'; $portable=Join-Path $dist 'portable'; $symbols=Join-Path $dist 'symbols'
+          $root=Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'; $dist=Join-Path $root 'dist'; $portable=Join-Path $dist 'portable'; $symbols=Join-Path $dist 'symbols'
           powershell -NoProfile -ExecutionPolicy Bypass -File "$root/tools/audit-package.ps1" -Root $root -Portable $portable
-          Compress-Archive -Path "$portable/*" -DestinationPath "$dist/RB_VideoFire_2.3.0_Alpha_Professional_Editing_Reliability_Portable.zip" -Force
+          Compress-Archive -Path "$portable/*" -DestinationPath "$dist/RB_VideoFire_2.4.0_Alpha_Professional_Workspace_Portable.zip" -Force
           if(-not(Get-ChildItem $symbols -Filter *.pdb)){Set-Content "$symbols/README.txt" 'No PDB emitted'}
-          Compress-Archive -Path "$symbols/*" -DestinationPath "$dist/RB_VideoFire_2.3.0_Alpha_Professional_Editing_Reliability_Symbols.zip" -Force
+          Compress-Archive -Path "$symbols/*" -DestinationPath "$dist/RB_VideoFire_2.4.0_Alpha_Professional_Workspace_Symbols.zip" -Force
           makensis /DX64 "/DSOURCE_ROOT=$root" "$root/packaging/rb-videofire/RBVideoFire.nsi"
-          $installer=Join-Path $dist 'RB VideoFire Setup 2.3.0 Alpha Professional Editing Reliability.exe'
+          $installer=Join-Path $dist 'RB VideoFire Setup 2.4.0 Alpha Professional Workspace.exe'
           powershell -NoProfile -ExecutionPolicy Bypass -File "$root/tools/audit-package.ps1" -Root $root -Portable $portable -Installer $installer
-          $hash=(Get-FileHash $installer -Algorithm SHA256).Hash
-          Write-Host "INSTALLER_SHA256=$hash"
+          Write-Host "INSTALLER_SHA256=$((Get-FileHash $installer -Algorithm SHA256).Hash)"
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: RB-VideoFire-2.3.0-Professional-Editing-Reliability-Installer
-          path: source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB VideoFire Setup 2.3.0 Alpha Professional Editing Reliability.exe
+          name: RB-VideoFire-2.4.0-Professional-Workspace-Installer
+          path: source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB VideoFire Setup 2.4.0 Alpha Professional Workspace.exe
           if-no-files-found: error
       - name: Upload portable and symbols
         uses: actions/upload-artifact@v4
         with:
-          name: RB-VideoFire-2.3.0-Professional-Editing-Reliability-Packages
+          name: RB-VideoFire-2.4.0-Professional-Workspace-Packages
           path: |
-            source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.3.0_Alpha_Professional_Editing_Reliability_Portable.zip
-            source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.3.0_Alpha_Professional_Editing_Reliability_Symbols.zip
+            source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.4.0_Alpha_Professional_Workspace_Portable.zip
+            source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.4.0_Alpha_Professional_Workspace_Symbols.zip
