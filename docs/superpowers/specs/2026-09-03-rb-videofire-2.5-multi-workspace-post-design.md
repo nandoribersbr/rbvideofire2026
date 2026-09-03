@@ -31,7 +31,7 @@ Trocar de workspace muda a disposição e as ferramentas, não o conteúdo edito
 O workspace Edição mantém o fluxo NLE principal.
 
 Layout recomendado:
-- superior esquerdo: Source Monitor e Inspector;
+- superior esquerdo: Source Monitor e Inspetor;
 - superior centro/direita: Program Monitor com maior prioridade de espaço;
 - inferior esquerdo: Projeto, Efeitos e Histórico;
 - inferior centro: Timeline como principal área operacional;
@@ -198,9 +198,7 @@ A interface PT-BR deve usar terminologia consistente:
 - Projeto;
 - Histórico;
 - Ferramentas;
-- Inspector, caso este seja mantido como termo oficial da interface, ou Inspetor se a tradução integral for adotada na revisão de idioma.
-
-A escolha final entre `Inspector` e `Inspetor` deve ser única e aplicada de forma consistente.
+- Inspetor.
 
 ## Limites arquiteturais
 - não criar cinco motores independentes;
