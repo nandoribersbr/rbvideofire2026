@@ -140,6 +140,7 @@ bar_cpp = r'''#include "workspacebar.h"
 #include <QHBoxLayout>
 #include <QSizePolicy>
 #include <QToolButton>
+#include <QVariant>
 
 namespace olive {
 
