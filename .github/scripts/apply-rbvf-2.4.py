@@ -15,10 +15,13 @@ write('app/dialog/about/about.cpp',about)
 version=read('app/packaging/windows/version.h').replace('2,3,0,0','2,4,0,0').replace('2.3.0.0\\0','2.4.0.0\\0').replace('2.3.0 Alpha Professional Editing Reliability\\0','2.4.0 Alpha Professional Workspace\\0')
 write('app/packaging/windows/version.h',version)
 professional=read('app/professional/professionalcore.h')
+# AudioMeterPolicy is deliberately a policy only; the existing native AudioMonitor remains the DSP/UI source.
 needle='namespace olive {\n'
-addition='''namespace olive {\n\nclass AudioMeterPolicy {\n public:\n  explicit AudioMeterPolicy(int peak_hold_ms = 1500)\n      : peak_hold_ms_(peak_hold_ms < 0 ? 0 : peak_hold_ms) {}\n  int peak_hold_ms() const { return peak_hold_ms_; }\n  static double LinearToDbfs(double linear) {\n    if (linear <= 0.0) return -60.0;\n    if (linear >= 1.0) return 0.0;\n    // Monotonic approximation suitable for UI meter policy; DSP remains in existing engine.\n    double x = linear;\n    double db = -60.0 + (60.0 * x);\n    return db > 0.0 ? 0.0 : db;\n  }\n  static bool IsClipping(double linear) { return linear >= 1.0; }\n private:\n  int peak_hold_ms_;\n};\n'''
+addition='''namespace olive {\n\nclass AudioMeterPolicy {\n public:\n  explicit AudioMeterPolicy(int peak_hold_ms = 1500)\n      : peak_hold_ms_(peak_hold_ms < 0 ? 0 : peak_hold_ms) {}\n  int peak_hold_ms() const { return peak_hold_ms_; }\n  static double LinearToDbfs(double linear) {\n    if (linear <= 0.0) return -60.0;\n    const double db = 20.0 * std::log10(linear);\n    if (db > 0.0) return 0.0;\n    return db < -60.0 ? -60.0 : db;\n  }\n  static bool IsClipping(double linear) { return linear >= 1.0; }\n private:\n  int peak_hold_ms_;\n};\n'''
 if 'class AudioMeterPolicy' not in professional:
     if needle not in professional: raise RuntimeError('professional namespace missing')
     professional=professional.replace(needle,addition,1)
+if '#include <cmath>' not in professional:
+    professional='#include <cmath>\n'+professional
 write('app/professional/professionalcore.h',professional)
 print('Applied RB VideoFire 2.4.0 professional workspace foundation')
