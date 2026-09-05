@@ -15,6 +15,10 @@ assert '2,4,0,0' in version and '2.4.0.0\\0' in version
 assert 'add_executable(olive-editor WIN32' in app or 'add_executable(RBVideoFire WIN32' in app
 assert 'class AudioMeterPolicy' in professional
 assert 'LinearToDbfs' in professional
+assert 'std::log10' in professional
+assert '20.0 * std::log10' in professional
 assert 'IsClipping' in professional
 assert 'peak_hold_ms' in professional
+# QA-029 reference points: 1.0 = 0 dBFS, 0.5 ~= -6.02 dBFS, 0.1 = -20 dBFS.
+assert '-60.0' in professional
 print('RB VideoFire 2.4 professional workspace validation passed')
