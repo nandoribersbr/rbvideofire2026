@@ -63,6 +63,11 @@ jobs:
           $root=Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
           python .github/scripts/apply-rbvf-2.4.py "$root"
           python .github/scripts/validate-rbvf-2.4.py "$root"
+      - name: G1 audio policy RED gate
+        shell: pwsh
+        run: |
+          $root=Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
+          python .github/scripts/test-rbvf-2.4-g1-audio.py "$root"
       - name: Acquire native dependencies
         shell: pwsh
         run: |
@@ -116,10 +121,3 @@ jobs:
           name: RB-VideoFire-2.4.0-Professional-Workspace-Installer
           path: source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB VideoFire Setup 2.4.0 Alpha Professional Workspace.exe
           if-no-files-found: error
-      - name: Upload portable and symbols
-        uses: actions/upload-artifact@v4
-        with:
-          name: RB-VideoFire-2.4.0-Professional-Workspace-Packages
-          path: |
-            source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.4.0_Alpha_Professional_Workspace_Portable.zip
-            source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB_VideoFire_2.4.0_Alpha_Professional_Workspace_Symbols.zip
