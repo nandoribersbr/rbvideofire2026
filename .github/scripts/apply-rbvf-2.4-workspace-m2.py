@@ -1,0 +1,17 @@
+from pathlib import Path
+import sys
+
+root = Path(sys.argv[1])
+main = root / 'app/window/mainwindow/mainwindow.cpp'
+text = main.read_text(encoding='utf-8')
+
+old = '''void MainWindow::SetDefaultLayout()\n{\n  KDDockWidgets::InitialOption o;\n  o.preferredSize = QSize(0, centralAreaGeometry().height());\n\n  // Top left - Tabify footage viewer, param panel, and node panel\n  addDockWidget(footage_viewer_panel_, KDDockWidgets::Location_OnTop, nullptr, o);\n  footage_viewer_panel_->addDockWidgetAsTab(param_panel_);\n  footage_viewer_panel_->addDockWidgetAsTab(node_panel_);\n  param_panel_->raise();\n\n  // Top right - sequence viewer\n  addDockWidget(sequence_viewer_panel_, KDDockWidgets::Location_OnRight, footage_viewer_panel_, o);\n\n  // Bottom center - timelines\n  addDockWidget(timeline_panels_.first(), KDDockWidgets::Location_OnBottom);\n\n  // Left of timeline - tool panel\n  o.preferredSize = QSize(1, 0);\n  addDockWidget(tool_panel_, KDDockWidgets::Location_OnLeft, timeline_panels_.first(), o);\n\n  // Right of timeline - audio monitor\n  o.preferredSize = QSize(320, 0);\n  addDockWidget(audio_monitor_panel_, KDDockWidgets::Location_OnRight, timeline_panels_.first(), o);\n\n  // Bottom left - project panel\n  addDockWidget(project_panel_, KDDockWidgets::Location_OnLeft, tool_panel_);\n  project_panel_->addDockWidgetAsTab(history_panel_);\n  project_panel_->raise();\n\n  // Hidden panels\n  pixel_sampler_panel_->close();\n  task_man_panel_->close();\n  curve_panel_->close();\n  scope_panel_->close();\n  multicam_panel_->close();\n'''
+
+new = '''void MainWindow::SetDefaultLayout()\n{\n  KDDockWidgets::InitialOption o;\n\n  // Professional editorial workspace: Source/Inspector compact on the left.\n  o.preferredSize = QSize(480, centralAreaGeometry().height());\n  addDockWidget(footage_viewer_panel_, KDDockWidgets::Location_OnTop, nullptr, o);\n  footage_viewer_panel_->addDockWidgetAsTab(param_panel_);\n  param_panel_->raise();\n\n  // Program Monitor gets visual priority in the upper workspace.\n  o.preferredSize = QSize(900, centralAreaGeometry().height());\n  addDockWidget(sequence_viewer_panel_, KDDockWidgets::Location_OnRight, footage_viewer_panel_, o);\n\n  // Timeline is the dominant lower workspace.\n  o.preferredSize = QSize(0, 420);\n  addDockWidget(timeline_panels_.first(), KDDockWidgets::Location_OnBottom, nullptr, o);\n\n  // Compact tools strip at the left edge of the timeline.\n  o.preferredSize = QSize(52, 0);\n  addDockWidget(tool_panel_, KDDockWidgets::Location_OnLeft, timeline_panels_.first(), o);\n\n  // Keep the real M1 Audio Monitor visible without stealing timeline width.\n  o.preferredSize = QSize(240, 0);\n  addDockWidget(audio_monitor_panel_, KDDockWidgets::Location_OnRight, timeline_panels_.first(), o);\n\n  // Project/History stays at the lower left for fast media access.\n  o.preferredSize = QSize(300, 0);\n  addDockWidget(project_panel_, KDDockWidgets::Location_OnLeft, tool_panel_, o);\n  project_panel_->addDockWidgetAsTab(history_panel_);\n  project_panel_->raise();\n\n  // Hidden panels in the default Edit workspace. They remain available from the UI.\n  node_panel_->close();\n  pixel_sampler_panel_->close();\n  task_man_panel_->close();\n  curve_panel_->close();\n  scope_panel_->close();\n  multicam_panel_->close();\n'''
+
+if old not in text:
+    raise SystemExit('Expected SetDefaultLayout baseline block not found; refusing unsafe patch')
+
+text = text.replace(old, new, 1)
+main.write_text(text, encoding='utf-8')
+print('Applied RB VideoFire 2.4 Workspace M2 layout')
