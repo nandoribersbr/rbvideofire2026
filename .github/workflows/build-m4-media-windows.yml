@@ -132,4 +132,23 @@ jobs:
         run: |
           $root=Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
           python .github/scripts/test-rbvf-m4-media-contract.py "$root"
-          Write-Host 'M4 core checkpoint compiled and smoke-tested. Full M4 release waits for smart bins/archive/relink gates.'
+
+      - name: Package M4 preview installer
+        shell: pwsh
+        run: |
+          $root=Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'; $dist=Join-Path $root 'dist'; $portable=Join-Path $dist 'portable'
+          powershell -NoProfile -ExecutionPolicy Bypass -File "$root/tools/audit-package.ps1" -Root $root -Portable $portable
+          makensis /DX64 "/DSOURCE_ROOT=$root" "$root/packaging/rb-videofire/RBVideoFire.nsi"
+          $original=Join-Path $dist 'RB VideoFire Setup 2.4.0 Alpha Professional Workspace.exe'
+          $installer=Join-Path $dist 'RB VideoFire Setup 2.4.0 Alpha M4 Media Intelligence Preview.exe'
+          if(!(Test-Path $original)){throw 'NSIS installer not produced'}
+          Move-Item -Force $original $installer
+          powershell -NoProfile -ExecutionPolicy Bypass -File "$root/tools/audit-package.ps1" -Root $root -Portable $portable -Installer $installer
+          Write-Host "INSTALLER_SHA256=$((Get-FileHash $installer -Algorithm SHA256).Hash)"
+
+      - name: Upload M4 preview installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: RB-VideoFire-2.4.0-M4-Media-Intelligence-Preview-Installer
+          path: source/RB_VideoFire_2.0.0_Alpha_Native/dist/RB VideoFire Setup 2.4.0 Alpha M4 Media Intelligence Preview.exe
+          if-no-files-found: error
