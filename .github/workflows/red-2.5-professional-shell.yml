@@ -1,0 +1,51 @@
+name: RED RB VideoFire 2.5 Professional Shell
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - rb-videofire-2.5.0-professional-shell
+
+permissions:
+  contents: read
+
+jobs:
+  prove-red:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract native source baseline
+        shell: pwsh
+        run: Expand-Archive -Path 'RB_VideoFire_2.0.0_Alpha_Native_Avid_Editorial_Core_Cumulative_OneClick.zip' -DestinationPath source
+
+      - name: Apply cumulative source through M4
+        shell: pwsh
+        run: |
+          $root = Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
+          python .github/scripts/apply-rbvf-2.1.py "$root" ".github/assets"
+          $svg=Resolve-Path '.github/assets/rb-videofire.svg'; $png=Join-Path $root 'app/ui/graphics/rb-videofire.png'; $ico=Join-Path $root 'app/packaging/windows/rb-videofire.ico'
+          magick -background none $svg -resize 256x256 -depth 8 -strip -define png:color-type=6 $png
+          magick $png -define icon:auto-resize=256,128,64,48,32,24,16 $ico
+          $audit=Join-Path $root 'tools/audit-package.ps1'; $auditText=Get-Content $audit -Raw; $auditText=$auditText.Replace('-match "Record Monitor") "Record Monitor não aplicado."','-match "Program Monitor") "Program Monitor não aplicado."'); Set-Content -Path $audit -Value $auditText -Encoding UTF8
+          python .github/scripts/apply-rbvf-2.1.1.py "$root"
+          $fixed=Join-Path $root 'app/ui/graphics/rb-videofire-fixed.png'; magick $png -resize 256x256 -depth 8 -strip -define png:color-type=6 $fixed; Move-Item -Force $fixed $png; magick $png -define icon:auto-resize=256,128,64,48,32,24,16 $ico
+          python .github/scripts/apply-rbvf-2.2.py "$root"
+          python .github/scripts/apply-rbvf-2.2-core.py "$root"
+          python .github/scripts/apply-rbvf-2.2.1.py "$root"
+          python .github/scripts/apply-rbvf-2.3.py "$root"
+          python .github/scripts/apply-rbvf-2.4.py "$root"
+          python .github/scripts/apply-rbvf-2.4-audio-m1.py "$root"
+          python .github/scripts/apply-rbvf-2.4-workspace-m2.py "$root"
+          python .github/scripts/apply-rbvf-m3-editorial.py "$root"
+          python .github/scripts/apply-rbvf-m4-media.py "$root"
+
+      - name: Professional Shell must be RED before implementation
+        shell: pwsh
+        run: |
+          $root=Resolve-Path 'source/RB_VideoFire_2.0.0_Alpha_Native'
+          python .github/scripts/test-rbvf-2.5-professional-shell.py "$root"
+          if ($LASTEXITCODE -eq 0) { throw 'Professional Shell unexpectedly GREEN before implementation' }
+          Write-Host 'RED confirmed: RB Professional Shell is absent from cumulative M4 source.'
+          $global:LASTEXITCODE=0
