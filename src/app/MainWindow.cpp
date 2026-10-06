@@ -8,19 +8,26 @@
 #include <QDockWidget>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QHBoxLayout>
 #include <QHeaderView>
+#include <QImage>
 #include <QKeySequence>
 #include <QLabel>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QPixmap>
+#include <QPushButton>
+#include <QSlider>
 #include <QStatusBar>
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QTextEdit>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
 
+#include <algorithm>
 #include <cmath>
 #include <exception>
 #include <filesystem>
@@ -69,10 +76,41 @@ void MainWindow::buildUi()
     auto *center = new QWidget(this);
     auto *layout = new QVBoxLayout(center);
 
-    auto *preview = new QLabel("PREVIEW", center);
-    preview->setAlignment(Qt::AlignCenter);
-    preview->setMinimumHeight(360);
-    preview->setStyleSheet("background:#101214;color:#d8d8d8;font-size:22px;");
+    m_preview = new QLabel("PREVIEW", center);
+    m_preview->setAlignment(Qt::AlignCenter);
+    m_preview->setMinimumHeight(360);
+    m_preview->setStyleSheet("background:#101214;color:#d8d8d8;font-size:22px;");
+
+    auto *transport = new QWidget(center);
+    auto *transportLayout = new QHBoxLayout(transport);
+    transportLayout->setContentsMargins(0, 0, 0, 0);
+
+    m_playButton = new QPushButton("Play", transport);
+    auto *stopButton = new QPushButton("Stop", transport);
+    m_seekSlider = new QSlider(Qt::Horizontal, transport);
+    m_seekSlider->setRange(0, 1000);
+    m_seekSlider->setEnabled(false);
+    m_timeLabel = new QLabel("00:00:00.000 / 00:00:00.000", transport);
+
+    transportLayout->addWidget(m_playButton);
+    transportLayout->addWidget(stopButton);
+    transportLayout->addWidget(m_seekSlider, 1);
+    transportLayout->addWidget(m_timeLabel);
+
+    connect(m_playButton, &QPushButton::clicked, this, &MainWindow::togglePlayback);
+    connect(stopButton, &QPushButton::clicked, this, &MainWindow::stopPlayback);
+    connect(m_seekSlider, &QSlider::sliderMoved, this, [this](int value) {
+        if (m_currentDuration <= 0.0) {
+            return;
+        }
+
+        m_currentPosition = m_currentDuration * (static_cast<double>(value) / 1000.0);
+        renderPreview(m_currentPosition);
+    });
+
+    m_playTimer = new QTimer(this);
+    m_playTimer->setInterval(40);
+    connect(m_playTimer, &QTimer::timeout, this, &MainWindow::onPlaybackTick);
 
     auto *timeline = new QTextEdit(center);
     timeline->setReadOnly(true);
@@ -84,7 +122,8 @@ void MainWindow::buildUi()
         "A1  --------------------------------------------------------"
     );
 
-    layout->addWidget(preview, 3);
+    layout->addWidget(m_preview, 3);
+    layout->addWidget(transport);
     layout->addWidget(timeline, 2);
     setCentralWidget(center);
 
@@ -110,6 +149,9 @@ void MainWindow::buildUi()
     for (int column = 1; column < 6; ++column) {
         m_mediaTable->horizontalHeader()->setSectionResizeMode(column, QHeaderView::ResizeToContents);
     }
+
+    connect(m_mediaTable, &QTableWidget::cellDoubleClicked,
+            this, &MainWindow::loadSelectedMedia);
 
     mediaDock->setWidget(m_mediaTable);
     mediaDock->setMinimumWidth(650);
@@ -165,9 +207,7 @@ void MainWindow::importMedia()
 
 void MainWindow::addMediaRow(const QString& filePath)
 {
-    const std::filesystem::path nativePath =
-        std::filesystem::path(filePath.toStdWString());
-
+    const std::filesystem::path nativePath(filePath.toStdWString());
     const MediaInfo info = m_mediaEngine->probe(nativePath);
 
     if (!info.hasVideo) {
@@ -187,7 +227,11 @@ void MainWindow::addMediaRow(const QString& filePath)
             ? QString::number(info.frameRate, 'f', 3)
             : QStringLiteral("—");
 
-    m_mediaTable->setItem(row, 0, new QTableWidgetItem(QFileInfo(filePath).fileName()));
+    auto *nameItem = new QTableWidgetItem(QFileInfo(filePath).fileName());
+    nameItem->setData(Qt::UserRole, filePath);
+    nameItem->setData(Qt::UserRole + 1, info.durationSeconds);
+
+    m_mediaTable->setItem(row, 0, nameItem);
     m_mediaTable->setItem(row, 1, new QTableWidgetItem(formatDuration(info.durationSeconds)));
     m_mediaTable->setItem(row, 2, new QTableWidgetItem(resolution));
     m_mediaTable->setItem(row, 3, new QTableWidgetItem(fps));
@@ -203,6 +247,128 @@ void MainWindow::addMediaRow(const QString& filePath)
             item->setToolTip(filePath);
         }
     }
+}
+
+void MainWindow::loadSelectedMedia(int row, int)
+{
+    auto *item = m_mediaTable->item(row, 0);
+    if (!item) {
+        return;
+    }
+
+    m_currentMediaPath = item->data(Qt::UserRole).toString();
+    m_currentDuration = item->data(Qt::UserRole + 1).toDouble();
+    m_currentPosition = 0.0;
+    m_playing = false;
+    m_playTimer->stop();
+    m_playButton->setText("Play");
+    m_seekSlider->setEnabled(true);
+    m_seekSlider->setValue(0);
+
+    renderPreview(0.0);
+}
+
+void MainWindow::renderPreview(double seconds)
+{
+    if (m_currentMediaPath.isEmpty()) {
+        return;
+    }
+
+    try {
+        const std::filesystem::path nativePath(m_currentMediaPath.toStdWString());
+        const VideoFrame frame = m_mediaEngine->decodeFrameAt(nativePath, seconds);
+
+        QImage image(
+            frame.rgb24.data(),
+            frame.width,
+            frame.height,
+            frame.stride,
+            QImage::Format_RGB888
+        );
+
+        const QPixmap pixmap = QPixmap::fromImage(image.copy());
+
+        m_preview->setPixmap(
+            pixmap.scaled(
+                m_preview->size(),
+                Qt::KeepAspectRatio,
+                Qt::SmoothTransformation
+            )
+        );
+
+        if (m_currentDuration > 0.0) {
+            const int sliderValue = static_cast<int>(
+                std::clamp(m_currentPosition / m_currentDuration, 0.0, 1.0) * 1000.0
+            );
+            if (!m_seekSlider->isSliderDown()) {
+                m_seekSlider->setValue(sliderValue);
+            }
+        }
+
+        m_timeLabel->setText(
+            QString("%1 / %2")
+                .arg(formatDuration(m_currentPosition),
+                     formatDuration(m_currentDuration))
+        );
+    } catch (const std::exception& error) {
+        statusBar()->showMessage(
+            QString("Erro no preview: %1").arg(QString::fromUtf8(error.what())),
+            5000
+        );
+    }
+}
+
+void MainWindow::togglePlayback()
+{
+    if (m_currentMediaPath.isEmpty()) {
+        return;
+    }
+
+    m_playing = !m_playing;
+
+    if (m_playing) {
+        if (m_currentPosition >= m_currentDuration && m_currentDuration > 0.0) {
+            m_currentPosition = 0.0;
+        }
+
+        m_playButton->setText("Pause");
+        m_playTimer->start();
+    } else {
+        m_playButton->setText("Play");
+        m_playTimer->stop();
+    }
+}
+
+void MainWindow::stopPlayback()
+{
+    m_playing = false;
+    m_playTimer->stop();
+    m_playButton->setText("Play");
+    m_currentPosition = 0.0;
+
+    if (!m_currentMediaPath.isEmpty()) {
+        renderPreview(0.0);
+    }
+}
+
+void MainWindow::onPlaybackTick()
+{
+    if (!m_playing || m_currentMediaPath.isEmpty()) {
+        return;
+    }
+
+    m_currentPosition += static_cast<double>(m_playTimer->interval()) / 1000.0;
+
+    if (m_currentDuration > 0.0 && m_currentPosition >= m_currentDuration) {
+        m_currentPosition = m_currentDuration;
+        renderPreview(m_currentPosition);
+        m_playing = false;
+        m_playTimer->stop();
+        m_playButton->setText("Play");
+        return;
+    }
+
+    renderPreview(m_currentPosition);
 }
 
 QString MainWindow::formatDuration(double seconds)
