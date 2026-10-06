@@ -1,7 +1,9 @@
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <string>
+#include <vector>
 
 namespace rbvf {
 
@@ -16,11 +18,19 @@ struct MediaInfo {
     std::string audioCodec;
 };
 
+struct VideoFrame {
+    int width{0};
+    int height{0};
+    int stride{0};
+    std::vector<std::uint8_t> rgb24;
+};
+
 class IMediaEngine
 {
 public:
     virtual ~IMediaEngine() = default;
     virtual MediaInfo probe(const std::filesystem::path& file) = 0;
+    virtual VideoFrame decodeFrameAt(const std::filesystem::path& file, double seconds) = 0;
 };
 
 } // namespace rbvf
