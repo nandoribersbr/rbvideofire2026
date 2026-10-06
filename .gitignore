@@ -1,0 +1,14 @@
+build/
+out/
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.pdb
+*.obj
+*.ilk
+*.log
+Data/Cache/
+Data/Autosave/
+Data/Logs/
