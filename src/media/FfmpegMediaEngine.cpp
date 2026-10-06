@@ -9,6 +9,7 @@ extern "C" {
 }
 
 #include <array>
+#include <memory>
 #include <stdexcept>
 #include <string>
 
