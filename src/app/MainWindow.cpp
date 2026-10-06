@@ -150,7 +150,7 @@ void MainWindow::buildUi()
         m_mediaTable->horizontalHeader()->setSectionResizeMode(column, QHeaderView::ResizeToContents);
     }
 
-    connect(m_mediaTable, &QTableWidget::cellDoubleClicked,
+    connect(m_mediaTable, &QTableWidget::cellClicked,
             this, &MainWindow::loadSelectedMedia);
 
     mediaDock->setWidget(m_mediaTable);
