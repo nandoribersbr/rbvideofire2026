@@ -9,6 +9,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHeaderView>
+#include <QKeySequence>
 #include <QLabel>
 #include <QMenu>
 #include <QMenuBar>
@@ -23,6 +24,7 @@
 #include <cmath>
 #include <exception>
 #include <filesystem>
+#include <stdexcept>
 
 namespace rbvf {
 
