@@ -12,34 +12,24 @@ set(FFMPEG_ROOT "" CACHE PATH "Root directory of the FFmpeg development package"
 
 find_path(FFMPEG_INCLUDE_DIR
     NAMES libavformat/avformat.h
-    HINTS
-        ${FFMPEG_ROOT}
-        ${FFMPEG_ROOT}/include
+    HINTS ${FFMPEG_ROOT} ${FFMPEG_ROOT}/include
     PATH_SUFFIXES include
 )
 
-find_library(FFMPEG_AVFORMAT_LIBRARY
-    NAMES avformat
-    HINTS ${FFMPEG_ROOT} ${FFMPEG_ROOT}/lib
-    PATH_SUFFIXES lib
-)
-
-find_library(FFMPEG_AVCODEC_LIBRARY
-    NAMES avcodec
-    HINTS ${FFMPEG_ROOT} ${FFMPEG_ROOT}/lib
-    PATH_SUFFIXES lib
-)
-
-find_library(FFMPEG_AVUTIL_LIBRARY
-    NAMES avutil
-    HINTS ${FFMPEG_ROOT} ${FFMPEG_ROOT}/lib
-    PATH_SUFFIXES lib
-)
+foreach(component AVFORMAT AVCODEC AVUTIL SWSCALE)
+    string(TOLOWER "${component}" component_lower)
+    find_library(FFMPEG_${component}_LIBRARY
+        NAMES ${component_lower}
+        HINTS ${FFMPEG_ROOT} ${FFMPEG_ROOT}/lib
+        PATH_SUFFIXES lib
+    )
+endforeach()
 
 if(NOT FFMPEG_INCLUDE_DIR OR
    NOT FFMPEG_AVFORMAT_LIBRARY OR
    NOT FFMPEG_AVCODEC_LIBRARY OR
-   NOT FFMPEG_AVUTIL_LIBRARY)
+   NOT FFMPEG_AVUTIL_LIBRARY OR
+   NOT FFMPEG_SWSCALE_LIBRARY)
     message(FATAL_ERROR
         "FFmpeg development files not found. "
         "Configure with -DFFMPEG_ROOT=C:/path/to/ffmpeg")
@@ -73,6 +63,7 @@ target_link_libraries(RBVideofire PRIVATE
     ${FFMPEG_AVFORMAT_LIBRARY}
     ${FFMPEG_AVCODEC_LIBRARY}
     ${FFMPEG_AVUTIL_LIBRARY}
+    ${FFMPEG_SWSCALE_LIBRARY}
 )
 
 if (WIN32)
