@@ -10,6 +10,7 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
+#include <algorithm>
 #include <array>
 #include <memory>
 #include <stdexcept>
