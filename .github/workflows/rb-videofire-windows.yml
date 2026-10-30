@@ -1,0 +1,61 @@
+name: RB Videofire Windows
+on:
+  push:
+    branches: [rebuild/rb-videofire-concat]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rb-windows-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  preparar:
+    name: Preparar fonte RB Videofire
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref || github.ref_name }}
+      - name: Importar fonte fixada e preservar historicos
+        id: source
+        shell: bash
+        env:
+          SOURCE_SHA: f0c0169628c61de7311f7fc15ee5be82dd611d2e
+        run: |
+          set -euo pipefail
+          if [ -f src/Cargo.toml ]; then
+            echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # First import only. Subsequent runs compile the committed source directly.
+          # The connector transports the reviewed patch; Git imports binary assets too.
+          test "$GITHUB_EVENT_NAME" = push
+          cp rebuild/import.patch "$RUNNER_TEMP/rb-videofire.patch"
+          git remote add concat-source https://github.com/jub0t/Concat.git
+          git fetch concat-source "$SOURCE_SHA"
+          test "$(git rev-parse FETCH_HEAD)" = "$SOURCE_SHA"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git merge --allow-unrelated-histories -s ours --no-commit "$SOURCE_SHA"
+          git read-tree --reset -u "$SOURCE_SHA"
+          git apply --binary --index "$RUNNER_TEMP/rb-videofire.patch"
+          git diff --cached "$SOURCE_SHA" --check
+          git commit -m "feat: reconstruir RB Videofire 3.0 sobre Concat com identidade propria"
+          git push origin HEAD:rebuild/rb-videofire-concat
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+  verificar:
+    needs: preparar
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.preparar.outputs.sha }}
+  windows:
+    needs: preparar
+    uses: ./.github/workflows/build-app.yml
+    with:
+      ref: ${{ needs.preparar.outputs.sha }}

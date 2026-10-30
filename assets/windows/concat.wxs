@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RB Videofire's Windows Installer package, the .msi beside the Inno Setup .exe.
+
+  Built by build-app.yml with WiX from the staged folder the .exe is made
+  of, so the two installers ship the same files. The .exe is the
+  one a person double-clicks; this is the one an administrator deploys -
+  Group Policy, Intune, winget - and it installs for the machine, into
+  Program Files, with a Start menu entry and a clean uninstall. Handed in:
+
+    wix build -arch x64 -d Version=0.2.8 -d Root=C:\...\RB Videofire
+              -d Stage=C:\...\stage\RBVideofire-0.2.8-windows-x86_64
+              -o stage\RBVideofire-0.2.8-windows-x86_64.msi assets\windows\concat.wxs
+
+  Root is the repository: WiX resolves a source path against where it is
+  run from, not against this file.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <!-- One upgrade code for the life of the product, so a newer .msi
+       replaces an older one rather than sitting beside it. -->
+  <Package Name="RB Videofire"
+           Manufacturer="RB8 Soluções Digitais"
+           Version="$(var.Version)"
+           UpgradeCode="3D132B98-6DA7-4A62-80D0-6597785B96EE"
+           Scope="perMachine"
+           Language="1046">
+    <MajorUpgrade DowngradeErrorMessage="Uma versão mais recente do RB Videofire já está instalada." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="rb-videofire.ico" SourceFile="$(var.Root)\assets\icons\rb-videofire.ico" />
+    <Property Id="ARPPRODUCTICON" Value="rb-videofire.ico" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/nandoribersbr/rbvideofire2026" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="RB Videofire" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ShortcutFolder" Name="RB Videofire" />
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="RB Videofire" Level="1">
+      <ComponentGroupRef Id="Program" />
+      <ComponentRef Id="StartMenu" />
+    </Feature>
+
+    <!-- Every file in the staged folder, as it is there. -->
+    <ComponentGroup Id="Program" Directory="INSTALLFOLDER">
+      <Files Include="$(var.Stage)\**" />
+    </ComponentGroup>
+
+    <Component Id="StartMenu" Directory="ShortcutFolder" Guid="42B8CE3C-CCB9-4297-9B4A-74321071F301">
+      <Shortcut Id="StartMenuShortcut"
+                Name="RB Videofire"
+                Description="Editor de vídeo"
+                Target="[INSTALLFOLDER]RBVideofire.exe"
+                WorkingDirectory="INSTALLFOLDER"
+                Icon="rb-videofire.ico" />
+      <!-- The way in when a graphics driver draws the window as coloured
+           squares: it turns off Settings > General > Draw on the GPU,
+           which that window hides. -->
+      <Shortcut Id="SafeGraphicsShortcut"
+                Name="RB Videofire (modo gráfico seguro)"
+                Description="RB Videofire com renderização por software"
+                Target="[INSTALLFOLDER]RBVideofire.exe"
+                Arguments="--software"
+                WorkingDirectory="INSTALLFOLDER"
+                Icon="rb-videofire.ico" />
+      <RemoveFolder Id="RemoveShortcutFolder" On="uninstall" />
+      <RegistryValue Root="HKCU" Key="Software\RB Videofire" Name="StartMenu" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+  </Package>
+</Wix>

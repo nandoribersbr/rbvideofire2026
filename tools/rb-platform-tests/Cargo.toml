@@ -1,0 +1,13 @@
+[package]
+name = "rb-platform-tests"
+version = "3.0.0"
+edition = "2024"
+rust-version = "1.93"
+license = "AGPL-3.0-or-later"
+publish = false
+
+[dependencies]
+concat-project = { path = "../../src/crates/concat-project" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+log = "0.4"
