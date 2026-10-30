@@ -1,48 +1,41 @@
-# RB Videofire 0.1
+# RB Videofire 3.0.0
 
-Nova fundação do RB Videofire, criada do zero.
+Editor de vídeo local para Windows 10/11 x64, reconstruído sobre o motor Rust do Concat.
 
-## Objetivo
+![Símbolo RB Videofire](assets/rb-videofire.svg)
 
-Construir um editor de vídeo offline para Windows 10/11 x64, com arquitetura modular e preparada para FFmpeg, timeline multifaixa, preview, áudio, cache e renderização.
+A interface usa a identidade RB Videofire: grafite, laranja, símbolo RB e português brasileiro por padrão. O executável é `RBVideofire.exe`. Configurações e modelos ficam em um namespace próprio, sem mover instalações Concat.
 
-## Stack
+## Usar e compilar
 
-- C++20
-- Qt 6
-- CMake
-- MSVC
-- FFmpeg como backend multimídia
-- projeto .rbvf em JSON
+Os instaladores e o ZIP portátil são produzidos pelo workflow **RB Videofire Windows**, após compilação e testes de inicialização. Enquanto o workflow não concluir, este repositório contém código-fonte, não um executável Windows validado.
 
-## Estado atual
+Para compilar no computador, consulte [BUILD_RB_WINDOWS.md](docs/BUILD_RB_WINDOWS.md) e execute `compilar.bat`. Para abrir um pacote já compilado, use `iniciar.bat`.
 
-Esta branch principal contém apenas a fundação 0.1.
+[Guia de primeira edição](docs/GUIA_RB_VIDEOFIRE.md) · [Origem e créditos](NOTICE_RB_VIDEOFIRE.md) · [Licença](LICENSE)
 
-Fluxo planejado:
+## Recursos da base
 
-- criar projeto
-- importar mídia
-- timeline
-- preview
-- split e trim
-- salvar e abrir .rbvf
-- exportar MP4 H.264/AAC
+O código inclui timeline multifaixa, cortes, títulos, keyframes, efeitos, áudio, proxies, composição por GPU e exportação com FFmpeg. Também contém integração com modelos locais de legendagem, voz e recorte de fundo. Esses modelos são opcionais e exigem download inicial.
 
-## Build inicial
+A presença de um módulo no código não comprova seu funcionamento neste fork. A validação de reprodução, exportação, GPU e modelos no Windows depende dos testes do pacote e do equipamento.
 
-Requisitos:
+## Projetos
 
-- Windows 10 ou 11 x64
-- Visual Studio 2022 com Desktop development with C++
-- CMake 3.24+
-- Qt 6.x com kit MSVC x64
+Novos projetos usam uma pasta contendo `project.rbvf`, mídia e arquivos auxiliares. Abra a pasta pelo programa. Pastas legadas contendo `concat.json` ou `wolfcut.json` são reconhecidas e mantêm o nome original do manifesto.
 
-Comandos:
+Projetos das antigas versões C++ do RB Videofire ainda não têm migração validada. Compartilhar a extensão `.rbvf` não significa compartilhar o mesmo formato.
 
-```powershell
-cmake -S . -B build -DCMAKE_PREFIX_PATH="C:/Qt/6.x.x/msvc2022_64"
-cmake --build build --config Release
+## Verificação
+
+```sh
+cargo test --manifest-path src/Cargo.toml -p concat-core -p concat-project --locked
+cargo test --manifest-path tools/rb-platform-tests/Cargo.toml --locked
+python scripts/locales.py --check
 ```
 
-O executável será gerado em `build/Release/RBVideofire.exe`.
+A suíte completa e o pacote Windows são verificados pelo GitHub Actions. O build usa Rust 1.93.1 e bibliotecas fixadas por SHA-256.
+
+## Licença
+
+AGPL-3.0-or-later. Distribuições modificadas devem preservar os avisos e disponibilizar o código-fonte correspondente conforme a licença. Leia também THIRD_PARTY_NOTICES.md.
